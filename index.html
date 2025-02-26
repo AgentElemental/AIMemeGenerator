@@ -185,16 +185,25 @@
                         "Content-Type": "application/json"
                     },
                     body: JSON.stringify({ 
-                        inputs: `Make a funny meme caption based on: "${originalCaption}"` 
+                        inputs: `Generate a numbered list of 14 funny meme captions based on: "${originalCaption}"` 
                     })
                 });
 
                 if (!memeResponse.ok) throw new Error(`Meme Caption API Failed: ${memeResponse.status}`);
 
                 const memeData = await memeResponse.json();
-                const memeCaption = memeData[0]?.generated_text || "No meme caption generated.";
+                let memeCaption = memeData[0]?.generated_text || "No meme caption generated.";
 
-                document.getElementById("captionText").innerText = `Meme Caption: ${memeCaption}`;
+                // Split by newlines and filter out empty lines or standalone numbers
+                const captions = memeCaption.split('\n')
+                    .map(line => line.trim())
+                    .filter(line => line.match(/^\d+\.\s+.+$/) && !line.match(/^\d+$/)) // Keep only lines with number + text
+                    .map((line, index) => `${index + 1}. ${line.replace(/^\d+\.\s+/, '')}`); // Renumber consistently
+
+                // Join with double <br> for spacing
+                const formattedCaptions = captions.join("<br><br>");
+                
+                document.getElementById("captionText").innerHTML = `Meme Caption:<br>${formattedCaptions}`;
             } catch (error) {
                 console.error("Error generating caption:", error);
                 document.getElementById("captionText").innerText = `Error: ${error.message}`;
