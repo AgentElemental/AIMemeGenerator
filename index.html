@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Meme Generator (FLUX.1-dev)</title>
+    <!-- Font Awesome CDN -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" integrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <style>
+        body {
+            font-family: 'Roboto', sans-serif;
+            text-align: center;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #1a1a2e, #16213e);
+            color: #e0e0e0;
+            min-height: 100vh;
+        }
+        h1 {
+            font-size: 2.5em;
+            margin-bottom: 20px;
+            color: #00d4ff;
+            text-shadow: 0 0 10px rgba(0, 212, 255, 0.5);
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 15px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+        }
+        input {
+            width: 60%;
+            padding: 12px 15px;
+            margin: 10px 0;
+            border: 2px solid #00d4ff;
+            border-radius: 8px;
+            background: #0f1b2d;
+            color: #e0e0e0;
+            font-size: 1em;
+            outline: none;
+            transition: border-color 0.3s ease;
+        }
+        input:focus {
+            border-color: #ff007a;
+        }
+        button {
+            padding: 12px 25px;
+            margin: 10px 5px;
+            background: #00d4ff;
+            border: none;
+            color: #0f1b2d;
+            font-weight: bold;
+            font-size: 1em;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        button:hover {
+            background: #ff007a;
+            color: #fff;
+            box-shadow: 0 0 15px rgba(255, 0, 122, 0.5);
+        }
+        button i {
+            margin-right: 8px;
+        }
+        img {
+            max-width: 100%;
+            height: auto;
+            margin-top: 20px;
+            border-radius: 10px;
+            border: 3px solid #00d4ff;
+            box-shadow: 0 0 15px rgba(0, 212, 255, 0.3);
+        }
+        #loadingText {
+            font-size: 1.2em;
+            font-weight: 500;
+            margin-top: 15px;
+            color: #ff007a;
+        }
+        #captionText {
+            font-size: 1.2em;
+            font-weight: 500;
+            margin-top: 15px;
+            color: #ff007a;
+            text-align: left; /* Align captions to the left */
+            padding-left: 20px; /* Add some padding for spacing from the left edge */
+            white-space: pre-wrap; /* Ensure long captions wrap properly */
+        }
+        .spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #00d4ff;
+            border-top: 3px solid #ff007a;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-left: 10px;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>AI Meme Generator</h1>
+        <input type="text" id="caption" placeholder="Enter meme caption">
+        <div>
+            <button onclick="generateMeme()"><i class="fas fa-camera"></i> Generate Meme</button>
+        </div>
+        <div id="memeContainer"></div>
+    </div>
+    <script>
+        const API_KEY = "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";
+        const MEME_API_URL = "https://api-inference.huggingface.co/models/black-forest-labs/FLUX.1-dev";
+        const MEME_JOKE_API = "https://api-inference.huggingface.co/models/mistralai/Mistral-7B-Instruct-v0.3";
+        let generatedImageUrl = null;
+
+        async function generateMeme() {
+            const caption = document.getElementById('caption').value.trim();
+            if (!caption) { alert('Please enter a caption'); return; }
+            document.getElementById("memeContainer").innerHTML = '<p id="loadingText">Generating Meme... <span class="spinner"></span></p>';
+            try {
+                const memeResponse = await fetch(MEME_API_URL, {
+                    method: "POST",
+                    headers: { "Authorization": `Bearer ${API_KEY}`, "Content-Type": "application/json" },
+                    body: JSON.stringify({ inputs: caption, options: { wait_for_model: true } })
+                });
+                if (!memeResponse.ok) throw new Error(`Meme Generation Failed: ${memeResponse.status}`);
+                const blob = await memeResponse.blob();
+                generatedImageUrl = URL.createObjectURL(blob);
+                document.getElementById("memeContainer").innerHTML = `
+                    <img src="${generatedImageUrl}" alt="Generated Meme" id="generatedMeme">
+                    <button onclick="generateCaption()"><i class="fas fa-comment-dots"></i> Get Caption</button>
+                    <p id="captionText"></p>
+                `;
+            } catch (error) {
+                console.error("Error generating meme:", error);
+                document.getElementById("memeContainer").innerHTML = `<p style="color: #ff4d4d;">${error.message}</p>`;
+            }
+        }
+
+        async function generateCaption() {
+            if (!generatedImageUrl) { 
+                alert('Generate a meme first!'); 
+                return; 
+            }
+
+            document.getElementById("captionText").innerText = "Generating Caption...";
+            document.getElementById("captionText").innerHTML += ' <span class="spinner"></span>';
+
+            try {
+                const originalCaption = document.getElementById('caption').value.trim();
+
+                if (!originalCaption) {
+                    document.getElementById("captionText").innerText = "No caption provided to generate from.";
+                    return;
+                }
+
+                const memeResponse = await fetch(MEME_JOKE_API, {
+                    method: "POST",
+                    headers: {
+                        "Authorization": `Bearer ${API_KEY}`,
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({ 
+                        inputs: `Make a funny meme caption based on: "${originalCaption}"` 
+                    })
+                });
+
+                if (!memeResponse.ok) throw new Error(`Meme Caption API Failed: ${memeResponse.status}`);
+
+                const memeData = await memeResponse.json();
+                const memeCaption = memeData[0]?.generated_text || "No meme caption generated.";
+
+                document.getElementById("captionText").innerText = `Meme Caption: ${memeCaption}`;
+            } catch (error) {
+                console.error("Error generating caption:", error);
+                document.getElementById("captionText").innerText = `Error: ${error.message}`;
+            }
+        }
+    </script>
+</body>
+</html>
